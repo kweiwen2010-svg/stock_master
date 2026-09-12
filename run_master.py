@@ -2,13 +2,29 @@ import subprocess
 import time
 import os
 import sys
+import requests # 新增 requests 模組來呼叫 API
 
 os.environ["PYTHONIOENCODING"] = "utf-8"
 
-# 定義你原本各個獨立模組的絕對路徑（確保絕對不會跑錯路）
-CHIP_ANALYZER_PATH = r"C:\Users\kweiw\Desktop\我的專案\Chip_Analyzer"  # 請依你實際的 Chip_Analyzer 資料夾位置調整
-DNA_ASSISTANT_PATH = r"C:\Users\kweiw\Desktop\我的專案\股票"     # 你的 DNA 2.0 / 評分系統資料夾
-TELEGRAM_BOT_PATH = r"C:\Users\kweiw\Desktop\我的專案\taiwan_stock_bot" # 你的 Telegram 機器人資料夾
+# ⚠️ 注意：GitHub Actions 是雲端 Linux 伺服器，找不到 Windows 的 C 槽
+# 建議將路徑改為相對路徑（例如 "./Chip_Analyzer"），這裡先保留你原有的設定
+CHIP_ANALYZER_PATH = r"C:\Users\kweiw\Desktop\我的專案\Chip_Analyzer"  
+DNA_ASSISTANT_PATH = r"C:\Users\kweiw\Desktop\我的專案\股票"     
+TELEGRAM_BOT_PATH = r"C:\Users\kweiw\Desktop\我的專案\taiwan_stock_bot" 
+
+def send_telegram_message(message):
+    token = os.getenv("TELEGRAM_BOT_TOKEN")
+    chat_id = os.getenv("TELEGRAM_CHAT_ID")
+    
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    payload = {
+        "chat_id": chat_id,
+        "text": message
+    }
+    
+    response = requests.post(url, json=payload)
+    print(f"Telegram API 回應: {response.text}")  # 印出回應方便在 GitHub Actions 記錄中檢查
+    return response.json()
 
 def run_step(script_name, folder_path):
     print(f"\n🚀 正在執行：{script_name} ...")
@@ -30,15 +46,16 @@ if __name__ == "__main__":
     print("="*50)
     
     try:
+        # 測試：一啟動就先發一條訊息，確保 Token 和 Chat ID 沒問題
+        send_telegram_message("🚀 台股總指揮系統啟動中！正在執行 GitHub Actions...")
+        
         # 第一步：執行籌碼下載與分析 (對應 Chip_Analyzer 內的下載主程式)
-        # 假設你的籌碼主程式檔名是 main_chip.py 或 chip_downloader.py，可自行替換
         run_step("main_chip.py", CHIP_ANALYZER_PATH)
         
         # 稍作等待確保檔案順利寫入硬碟
         time.sleep(2)
         
-        # 第二步：執行 DNA 核心篩選與評分 (對應 app.py 或 dna_core 相關運算)
-        # 若需要自動產出最新清單，可以呼叫對應的運算腳本
+        # 第二步：執行 DNA 核心篩選與評分 (目前為註解狀態)
         # run_step("你的評分計算腳本.py", DNA_ASSISTANT_PATH)
         
         # 第三步：執行 Telegram 機器人推播 (對應 taiwan_stock_bot 內的執行檔)
@@ -47,6 +64,9 @@ if __name__ == "__main__":
         print("\n" + "="*50)
         print("🎉 恭喜！今日全自動量化選股與 Telegram 推播已全數執行完畢！")
         print("="*50)
+        send_telegram_message("🎉 今日全自動量化選股已全數執行完畢！")
         
     except Exception as e:
         print(f"\n⚠️ 流程中斷：{e}")
+        # 若流程中斷，將錯誤訊息傳到 Telegram
+        send_telegram_message(f"⚠️ 流程中斷：{e}")
